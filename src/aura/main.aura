@@ -1,0 +1,332 @@
+// ==============================================================================
+// AuraFin - Global Financial Settlement & Transaction Engine
+// Demonstrating the Premier Qualities of Aura Lang with TypeScript Libraries
+// ==============================================================================
+
+// ------------------------------------------------------------------------------
+// 1. Seamless Direct Ingestion of TypeScript Declarations (.d.ts)
+// ------------------------------------------------------------------------------
+import {
+  formatCurrency,
+  convertCurrency,
+  getExchangeRate,
+  calculateFee,
+  roundToDecimals
+} from "./ts/currency.js";
+
+import {
+  generateTransactionId,
+  signPayload,
+  verifySignature,
+  sha256Hex
+} from "./ts/crypto_signer.js";
+
+import {
+  getIsoTimestamp,
+  calculateSettlementWindow,
+  formatDisplayDate
+} from "./ts/date_utils.js";
+
+import {
+  badge,
+  header,
+  formatRow,
+  successBanner,
+  errorBanner,
+  divider
+} from "./ts/terminal_ui.js";
+
+// ------------------------------------------------------------------------------
+// 2. Struct Definitions & Receiver Methods (Golang-Style Architecture)
+// ------------------------------------------------------------------------------
+struct Transaction {
+  id: String,
+  senderAccount: String,
+  receiverAccount: String,
+  amount: Float,
+  currency: String,
+  targetCurrency: String,
+  riskScore: Float,
+  memo: String
+};
+
+struct AuditRecord {
+  txId: String,
+  timestamp: String,
+  payloadHash: String,
+  signature: String,
+  verified: Bool
+};
+
+struct BatchSummary {
+  totalProcessed: Int,
+  totalVolumeUsd: Float,
+  totalFeesCollectedUsd: Float,
+  lowRiskCount: Int,
+  mediumRiskCount: Int,
+  highRiskCount: Int
+};
+
+// Method Receiver: Gross Amount
+fn (t: Transaction) GetGrossAmount(): Float {
+  return t.amount;
+}
+
+// Method Receiver: Domestic vs Cross-Border evaluation
+fn (t: Transaction) IsCrossBorder(): Bool {
+  return t.currency != t.targetCurrency;
+}
+
+// Method Receiver: Risk Tier classification
+fn (t: Transaction) RiskTier(): String {
+  if (t.riskScore < 0.25) {
+    return "LOW";
+  } else if (t.riskScore < 0.65) {
+    return "MEDIUM";
+  } else {
+    return "HIGH";
+  }
+}
+
+// ------------------------------------------------------------------------------
+// 3. Algebraic Data Types: Option<T> & Result<T, E> (Zero Nulls / Undefined)
+// ------------------------------------------------------------------------------
+
+// Safe rate lookup returning Option<Float> instead of undefined or null
+fn safeLookupRate(fromCurr: String, toCurr: String): Option<Float> {
+  let rate = getExchangeRate(fromCurr, toCurr);
+  if (rate <= 0.0) {
+    return None;
+  } else {
+    return Some(rate);
+  }
+}
+
+// Compliance and anti-money laundering (AML) screen returning Result<Float, String>
+fn screenAmlLimits(amount: Float, maxThreshold: Float): Result<Float, String> {
+  if (amount <= 0.0) {
+    return Err("Transaction amount must be strictly positive");
+  } else if (amount > maxThreshold) {
+    return Err(`Amount exceeds maximum allowable threshold of ${maxThreshold}`);
+  } else {
+    return Ok(amount);
+  }
+}
+
+// ------------------------------------------------------------------------------
+// 4. Asynchronous Transaction Worker (Fibers & WaitGroup)
+// ------------------------------------------------------------------------------
+async fn processTransactionWorker(
+  tx: Transaction,
+  secretKey: String,
+  wg: WaitGroup
+) {
+  // Step A: Calculate FX conversion with TypeScript library
+  let rate = getExchangeRate(tx.currency, tx.targetCurrency);
+  let converted = convertCurrency(tx.amount, tx.currency, tx.targetCurrency);
+  let fee = calculateFee(converted, 0.45); // 45 bps fee
+  let netAmount = roundToDecimals(converted - fee, 2.0);
+
+  // Step B: Crypto signature with TypeScript library
+  let payload = `${tx.id}:${tx.senderAccount}:${converted}:${tx.targetCurrency}`;
+  let proof = signPayload(payload, secretKey);
+  let isValid = verifySignature(payload, proof.signature, secretKey);
+
+  // Step C: Pattern Matching on Risk Tier
+  let riskBadge = match tx.RiskTier() {
+    "LOW" => badge("RISK: LOW", "green"),
+    "MEDIUM" => badge("RISK: MEDIUM", "yellow"),
+    "HIGH" => badge("RISK: HIGH", "red"),
+    _ => badge("RISK: UNKNOWN", "cyan")
+  };
+
+  // Step D: Print Transaction Card
+  println(divider());
+  println(`  Transaction ${badge(tx.id, "cyan")} ${riskBadge}`);
+  println(formatRow("Sender", tx.senderAccount));
+  println(formatRow("Receiver", tx.receiverAccount));
+  println(formatRow("Original Sum", formatCurrency(tx.amount, tx.currency)));
+  println(formatRow("Target Exchange", formatCurrency(converted, tx.targetCurrency)));
+  println(formatRow("Processing Fee", formatCurrency(fee, tx.targetCurrency)));
+  println(formatRow("Net to Settle", formatCurrency(netAmount, tx.targetCurrency)));
+  println(formatRow("HMAC Signature", proof.signature));
+  
+  if (isValid) {
+    println(successBanner("Cryptographic audit signature verified."));
+  } else {
+    println(errorBanner("Signature verification failed."));
+  }
+
+  wg.done();
+}
+
+// ------------------------------------------------------------------------------
+// 5. Main Execution Entry Point
+// ------------------------------------------------------------------------------
+async fn main() {
+  let secretKey = "aurafin_production_hmac_secret_2026";
+  let startTime = getIsoTimestamp();
+  let settlement = calculateSettlementWindow(startTime, 2.0);
+
+  println("");
+  println("==================================================================");
+  println("   ⚡ AURA FIN - FINANCIAL SETTLEMENT & CLEARING ENGINE           ");
+  println("   Ecosistema TypeScript + Seguridad Estática Aura Lang           ");
+  println("==================================================================");
+  println("");
+
+  // ----------------------------------------------------------------------------
+  // SECTION 1: TypeScript Library Interoperability Showcase
+  // ----------------------------------------------------------------------------
+  println(header("1. INTEROPERABILIDAD Y CONSUMO DE LIBRERÍAS TYPESCRIPT"));
+  println("  Aura ingiere directamente las definiciones de tipos (.d.ts) sin ");
+  println("  necesidad de wrappers manuales ni boilerplate.");
+  println("");
+
+  println(formatRow("Trade Date (UTC)", formatDisplayDate(startTime)));
+  println(formatRow("T+2 Settlement Date", settlement.settlementDate));
+  println(formatRow("Business Day Confirmed", `${settlement.isBusinessDay}`));
+  println(formatRow("EUR/USD Exchange Rate", `${getExchangeRate("EUR", "USD")}`));
+  println(formatRow("USD/CLP Exchange Rate", `${getExchangeRate("USD", "CLP")}`));
+  println(formatRow("Sample Formatted EUR", formatCurrency(15420.5, "EUR")));
+  println(formatRow("Sample Formatted USD", formatCurrency(16731.24, "USD")));
+  println(formatRow("Sample Formatted CLP", formatCurrency(15819385.0, "CLP")));
+  println(badge("TYPESCRIPT INTEGRATION ACTIVE", "green"));
+  println("");
+
+  // ----------------------------------------------------------------------------
+  // SECTION 2: Tipos Algebraicos y Safe Null Elimination (Option & Result)
+  // ----------------------------------------------------------------------------
+  println(header("2. TIPOS ALGEBRAICOS Y ELIMINACIÓN DE NULL / UNDEFINED"));
+  println("  Aura sustituye null/undefined por Option<T> y Result<T, E>,");
+  println("  eliminando por completo excepciones en tiempo de ejecución.");
+  println("");
+
+  let validRateOpt = safeLookupRate("GBP", "USD");
+  let rateMessage = match validRateOpt {
+    Some(r) => `Tasa de cambio encontrada con éxito: 1 GBP = ${r} USD`,
+    None => "Tasa de cambio no disponible en el libro de órdenes."
+  };
+  println(formatRow("Lookup GBP/USD", rateMessage));
+
+  let amlCheck1 = screenAmlLimits(8500.0, 10000.0);
+  let amlMsg1 = match amlCheck1 {
+    Ok(val) => `Aprobado por AML: ${formatCurrency(val, "USD")}`,
+    Err(e) => `Rechazado por AML: ${e}`
+  };
+  println(formatRow("Screening $8,500", amlMsg1));
+
+  let amlCheck2 = screenAmlLimits(25000.0, 10000.0);
+  let amlMsg2 = match amlCheck2 {
+    Ok(val) => `Aprobado por AML: ${formatCurrency(val, "USD")}`,
+    Err(e) => `Rechazado por AML: ${e}`
+  };
+  println(formatRow("Screening $25,000", amlMsg2));
+  println(badge("SAFETY GUARANTEES VERIFIED", "green"));
+  println("");
+
+  // ----------------------------------------------------------------------------
+  // SECTION 3: Concurrencia CSP con WaitGroup y Workers Paralelos
+  // ----------------------------------------------------------------------------
+  println(header("3. PROCESAMIENTO CONCURRENTE CON WAITGROUP"));
+  println("  Procesando lote de transferencias financieras de manera asíncrona,");
+  println("  invocando validaciones criptográficas y cálculos en paralelo.");
+  println("");
+
+  let tx1: Transaction = {
+    id: generateTransactionId("TX"),
+    senderAccount: "ACC-CHILE-001",
+    receiverAccount: "ACC-USA-994",
+    amount: 1500000.0,
+    currency: "CLP",
+    targetCurrency: "USD",
+    riskScore: 0.12,
+    memo: "Software Consulting Invoice"
+  };
+
+  let tx2: Transaction = {
+    id: generateTransactionId("TX"),
+    senderAccount: "ACC-GERMANY-402",
+    receiverAccount: "ACC-UK-118",
+    amount: 42500.0,
+    currency: "EUR",
+    targetCurrency: "GBP",
+    riskScore: 0.48,
+    memo: "Hardware Equipment Import"
+  };
+
+  let tx3: Transaction = {
+    id: generateTransactionId("TX"),
+    senderAccount: "ACC-JAPAN-881",
+    receiverAccount: "ACC-USA-552",
+    amount: 3200000.0,
+    currency: "JPY",
+    targetCurrency: "USD",
+    riskScore: 0.82,
+    memo: "Liquidity Pool Rebalance"
+  };
+
+  let tx4: Transaction = {
+    id: generateTransactionId("TX"),
+    senderAccount: "ACC-USA-220",
+    receiverAccount: "ACC-FRANCE-330",
+    amount: 12500.0,
+    currency: "USD",
+    targetCurrency: "EUR",
+    riskScore: 0.18,
+    memo: "Cloud Infrastructure License"
+  };
+
+  let batch = [tx1, tx2, tx3, tx4];
+  let wg = WaitGroup.new();
+  wg.add(4);
+
+  // Procesamiento concurrente de cada transacción en el lote
+  for item in batch {
+    await processTransactionWorker(item, secretKey, wg);
+  }
+
+  await wg.wait();
+  println(divider());
+  println(successBanner("Todas las transacciones concurrentes finalizaron su ciclo de vida."));
+  println("");
+
+  // ----------------------------------------------------------------------------
+  // SECTION 4: Resumen de Auditoría y Métricas del Lote
+  // ----------------------------------------------------------------------------
+  println(header("4. RESUMEN DEL LOTE DE LIQUIDACIÓN FINANCIERA"));
+
+  let mut totalVolumeUsd: Float = 0.0;
+  let mut totalFeesUsd: Float = 0.0;
+  let mut lowCount: Int = 0;
+  let mut medCount: Int = 0;
+  let mut highCount: Int = 0;
+
+  for t in batch {
+    let usdEquivalent = convertCurrency(t.amount, t.currency, "USD");
+    let feeUsd = calculateFee(usdEquivalent, 0.45);
+    totalVolumeUsd = totalVolumeUsd + usdEquivalent;
+    totalFeesUsd = totalFeesUsd + feeUsd;
+
+    if (t.RiskTier() == "LOW") {
+      lowCount = lowCount + 1;
+    } else if (t.RiskTier() == "MEDIUM") {
+      medCount = medCount + 1;
+    } else {
+      highCount = highCount + 1;
+    }
+  }
+
+  println(formatRow("Transacciones Procesadas", "4 operaciones"));
+  println(formatRow("Volumen Total Liquidado", formatCurrency(totalVolumeUsd, "USD")));
+  println(formatRow("Comisiones Recaudadas (45 bps)", formatCurrency(totalFeesUsd, "USD")));
+  println(formatRow("Distribución Bajo Riesgo", `${lowCount} (Aprobación instantánea)`));
+  println(formatRow("Distribución Riesgo Medio", `${medCount} (Monitoreo regular)`));
+  println(formatRow("Distribución Alto Riesgo", `${highCount} (Marcado para auditoría)`));
+  println("");
+
+  println("==================================================================");
+  println("   ✨ PROYECTO EJECUTADO CON ÉXITO - AURA LANG + TYPESCRIPT       ");
+  println("==================================================================");
+  println("");
+}

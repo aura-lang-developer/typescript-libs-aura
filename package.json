@@ -1,0 +1,32 @@
+{
+  "name": "aurafin-typescript-libs",
+  "version": "1.0.0",
+  "description": "Aura Lang + TypeScript Libraries Showcasing Type Interoperability, Algebraic Types, and Concurrency",
+  "type": "module",
+  "scripts": {
+    "build:ts": "tsc",
+    "build:aura": "bash scripts/build.sh",
+    "build": "npm run build:ts && npm run build:aura",
+    "start": "bash scripts/run.sh",
+    "inspect:types": "bash scripts/inspect_types.sh",
+    "test": "bash scripts/test.sh"
+  },
+  "keywords": [
+    "aura-lang",
+    "typescript",
+    "interop",
+    "dts-import",
+    "golang-model",
+    "concurrency"
+  ],
+  "author": "Mauricio Rojas",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "colorette": "^2.0.20",
+    "date-fns": "^4.4.0"
+  }
+}

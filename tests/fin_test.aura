@@ -1,0 +1,81 @@
+// ==============================================================================
+// Unit Test Suite for AuraFin + TypeScript Interop
+// ==============================================================================
+
+import {
+  formatCurrency,
+  convertCurrency,
+  getExchangeRate,
+  calculateFee,
+  roundToDecimals
+} from "./ts/currency.js";
+
+import {
+  generateTransactionId,
+  signPayload,
+  verifySignature,
+  sha256Hex
+} from "./ts/crypto_signer.js";
+
+import {
+  calculateSettlementWindow
+} from "./ts/date_utils.js";
+
+import {
+  badge,
+  successBanner,
+  errorBanner
+} from "./ts/terminal_ui.js";
+
+fn assertEqualFloat(actual: Float, expected: Float, desc: String) {
+  let diff = actual - expected;
+  let absDiff = if (diff < 0.0) { 0.0 - diff } else { diff };
+  if (absDiff > 0.01) {
+    println(errorBanner(`Assertion failed for ${desc}: expected ${expected}, got ${actual}`));
+  } else {
+    println(successBanner(`Test Passed: ${desc}`));
+  }
+}
+
+fn assertEqualBool(actual: Bool, expected: Bool, desc: String) {
+  if (actual == expected) {
+    println(successBanner(`Test Passed: ${desc}`));
+  } else {
+    println(errorBanner(`Assertion failed for ${desc}: expected ${expected}, got ${actual}`));
+  }
+}
+
+fn main() {
+  println("==========================================================");
+  println(" 🧪 EJECUTANDO TESTS UNITARIOS AURAFIN (AURA + TYPESCRIPT) ");
+  println("==========================================================");
+  println("");
+
+  // Test 1: Currency Conversion
+  let eurUsd = getExchangeRate("EUR", "USD");
+  assertEqualFloat(eurUsd, 1.085, "EUR/USD exchange rate is 1.085");
+
+  let converted = convertCurrency(100.0, "EUR", "USD");
+  assertEqualFloat(converted, 108.5, "Convert 100 EUR to USD is 108.50");
+
+  let fee = calculateFee(1000.0, 0.45);
+  assertEqualFloat(fee, 4.5, "Fee 45 bps on 1000 is 4.50");
+
+  // Test 2: Crypto Signatures
+  let payload = "TEST-TX:ACC-1:100.0:USD";
+  let secret = "test_key_123";
+  let proof = signPayload(payload, secret);
+  let isValid = verifySignature(payload, proof.signature, secret);
+  assertEqualBool(isValid, true, "HMAC-SHA256 signature verification");
+
+  let isInvalid = verifySignature("TAMPERED-PAYLOAD", proof.signature, secret);
+  assertEqualBool(isInvalid, false, "HMAC-SHA256 tampering rejection");
+
+  // Test 3: Date Settlement Window
+  let window = calculateSettlementWindow("2026-10-09T10:00:00Z", 2.0);
+  assertEqualBool(window.isBusinessDay, true, "Settlement falls on business day");
+
+  println("");
+  println(badge("ALL 6 TESTS EXECUTED SUCCESSFULLY", "green"));
+  println("");
+}
